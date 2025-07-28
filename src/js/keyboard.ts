@@ -20,9 +20,7 @@ export class Keyboard {
   private waveRadius: number;
   private waveHeight: number;
   private idleAnimationTime: number;
-  private _isIncreasing: boolean = false;
   private clearAnimationInProgress: boolean = false;
-  private _clearAnimationSpeed: number = 15;
   private container: THREE.Group;
   private isDarkMode: boolean;
   private keyMaterials: Record<string, THREE.MeshPhysicalMaterial[]>;
@@ -40,12 +38,13 @@ export class Keyboard {
     isPaused: boolean;
     pauseStartTime: number;
   };
-  private aiRemixAnimation: {
-    isActive: boolean;
-    startTime: number;
-    pulseSpeed: number;
-    waveRadius: number;
-  };
+  // Animation state removed - was unused
+  // private aiRemixAnimation: {
+  //   isActive: boolean;
+  //   startTime: number;
+  //   pulseSpeed: number;
+  //   waveRadius: number;
+  // };
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -83,14 +82,8 @@ export class Keyboard {
     this.idleAnimationTime = 0;
     
     // State flags
-    this._clearAnimationSpeed = 15;
     this.isDarkMode = false;
-    this.aiRemixAnimation = {
-      isActive: false,
-      startTime: 0,
-      pulseSpeed: 0.1,
-      waveRadius: 5
-    };
+    // Animation state removed - was unused
 
     // Setup keyboard container
     // Create a container for all keyboard elements
@@ -447,8 +440,7 @@ export class Keyboard {
   async animateKeyDown(key: string, startHeight: number) {
     return new Promise<void>(resolve => {
       const steps = 60;
-      const duration = 1000; // Fixed duration for smooth animation
-      const _stepTime = duration / steps;
+      // const duration = 1000; // Fixed duration for smooth animation - unused
       let currentStep = 0;
       
       const animate = () => {
@@ -686,11 +678,11 @@ export class Keyboard {
   }
 
   increaseHeight() {
-    this._isIncreasing = true;
+    // Implementation removed - unused
   }
 
   decreaseHeight() {
-    this._isIncreasing = false;
+    // Implementation removed - unused
   }
 
   updateRotation() {
@@ -730,40 +722,9 @@ export class Keyboard {
     // This method is kept for compatibility
   }
 
-  private _updateAiRemixAnimation() {
-    if (!this.aiRemixAnimation.isActive) return;
+  // Method removed - was unused
 
-    const currentTime = performance.now();
-    const elapsed = (currentTime - this.aiRemixAnimation.startTime) / 1000;
-    
-    Object.entries(this.keyObjects).forEach(([key, mesh]) => {
-      const baseHeight = this.keyHeights[key] || 0.01;
-      
-      // Create ripple effect based on key position
-      const ripplePhase = elapsed * this.aiRemixAnimation.pulseSpeed + 
-        (mesh.position.x * 0.02) + (mesh.position.z * 0.03);
-      const rippleOffset = Math.sin(ripplePhase) * 0.3;
-      
-      // Add gentle pulsing
-      const pulseOffset = Math.sin(elapsed * 2) * 0.1;
-      
-      const animatedHeight = Math.max(0.01, baseHeight + rippleOffset + pulseOffset);
-      this.updateKeyObject(key, animatedHeight);
-    });
-  }
-
-  private _createGlobalWaveEffect() {
-    // Create waves from multiple points for a dramatic finish
-    const waveOrigins = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'];
-    
-    waveOrigins.forEach((key, index) => {
-      if (this.keyObjects[key]) {
-        setTimeout(() => {
-          this.createWaveEffect(key);
-        }, index * 100); // Stagger the waves
-      }
-    });
-  }
+  // Method removed - was unused
 
   updateTheme(isDarkMode: boolean) {
     this.isDarkMode = isDarkMode;

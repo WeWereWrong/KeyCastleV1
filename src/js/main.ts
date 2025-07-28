@@ -5,13 +5,13 @@ import { UI } from './ui';
 class Application {
   private scene: Scene | null;
   private keyboard: Keyboard | null;
-  private _ui: UI | null;
+  // private ui: UI | null; // Initialized but not used elsewhere
   private isRunning: boolean;
 
   constructor() {
     this.scene = null;
     this.keyboard = null;
-    this._ui = null;
+    // this.ui = null;
     this.isRunning = false;
   }
 
@@ -20,7 +20,7 @@ class Application {
       // Initialize core components
       this.scene = new Scene();
       this.keyboard = new Keyboard(this.scene);
-      this._ui = new UI(this.keyboard, (this.scene as any).renderer);
+      new UI(this.keyboard, (this.scene as any).renderer); // UI initializes itself
       
       // Start animation loop
       this.isRunning = true;
