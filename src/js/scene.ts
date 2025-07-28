@@ -3,8 +3,18 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 export class Scene {
-  private floor: THREE.Mesh;
-  private floorMaterial: THREE.MeshLambertMaterial;
+  public scene!: THREE.Scene;
+  public renderer!: THREE.WebGLRenderer;
+  public camera!: THREE.OrthographicCamera;
+  public controls!: OrbitControls;
+  private ambientLight!: THREE.AmbientLight;
+  private keyLight!: THREE.DirectionalLight;
+  private fillLight!: THREE.DirectionalLight;
+  private backLight!: THREE.DirectionalLight;
+  private rimLight!: THREE.DirectionalLight;
+  private floor!: THREE.Mesh;
+  private floorMaterial!: THREE.MeshLambertMaterial;
+  private isDarkMode: boolean = false;
 
   constructor() {
     this.initializeScene();
@@ -37,10 +47,10 @@ export class Scene {
   configureRenderer() {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.physicallyCorrectLights = true;
+    (this.renderer as any).physicallyCorrectLights = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    (this.renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
   }
 
   setupRendererSize() {
@@ -150,7 +160,7 @@ export class Scene {
     this.scene.add(this.rimLight);
   }
 
-  updateLightPosition(angle) {
+  updateLightPosition(angle: number) {
     const radius = 250;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
@@ -239,7 +249,7 @@ export class Scene {
     }
   }
 
-  updateCameraFrustum(d, aspect) {
+  updateCameraFrustum(d: number, aspect: number) {
     this.camera.left = -d * aspect;
     this.camera.right = d * aspect;
     this.camera.top = d;

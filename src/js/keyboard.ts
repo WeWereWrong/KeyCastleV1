@@ -20,9 +20,9 @@ export class Keyboard {
   private waveRadius: number;
   private waveHeight: number;
   private idleAnimationTime: number;
-  private isIncreasing: boolean;
-  private clearAnimationInProgress: boolean;
-  private clearAnimationSpeed: number;
+  private _isIncreasing: boolean = false;
+  private clearAnimationInProgress: boolean = false;
+  private _clearAnimationSpeed: number = 15;
   private container: THREE.Group;
   private isDarkMode: boolean;
   private keyMaterials: Record<string, THREE.MeshPhysicalMaterial[]>;
@@ -39,6 +39,12 @@ export class Keyboard {
     targetRotation: number;
     isPaused: boolean;
     pauseStartTime: number;
+  };
+  private aiRemixAnimation: {
+    isActive: boolean;
+    startTime: number;
+    pulseSpeed: number;
+    waveRadius: number;
   };
 
   constructor(scene: Scene) {
@@ -77,7 +83,7 @@ export class Keyboard {
     this.idleAnimationTime = 0;
     
     // State flags
-    this.clearAnimationSpeed = 15;
+    this._clearAnimationSpeed = 15;
     this.isDarkMode = false;
     this.aiRemixAnimation = {
       isActive: false,
@@ -89,7 +95,7 @@ export class Keyboard {
     // Setup keyboard container
     // Create a container for all keyboard elements
     this.container = new THREE.Group();
-    this.scene.scene.add(this.container);
+    (this.scene as any).scene.add(this.container);
     
     // Initialize rotation animation properties
     this.rotationState = {
@@ -187,7 +193,7 @@ export class Keyboard {
     });
   }
 
-  createKeyWithOutlineAndText(key, x, z, font, outlineMaterial) {
+  createKeyWithOutlineAndText(key: string, x: number, z: number, font: any, outlineMaterial: THREE.LineBasicMaterial) {
     // Create main key mesh
     const geometry = new THREE.BoxGeometry(this.keySize, this.keySize, this.keySize);
     const keyMaterials = this.createKeyMaterial();
@@ -213,7 +219,7 @@ export class Keyboard {
     
     // Store references
     this.keyObjects[key] = mesh;
-    this.keyMaterials[key] = keyMaterials;
+    this.keyMaterials[key] = keyMaterials as THREE.MeshPhysicalMaterial[];
     this.textMaterials[key] = textMaterial;
     this.outlineObjects[key] = outline;
     this.baseOutlineObjects[key] = baseOutline;
@@ -223,7 +229,7 @@ export class Keyboard {
     this.keyTypeCounts[key] = 0;
   }
 
-  setupKeyMesh(mesh, x, z) {
+  setupKeyMesh(mesh: THREE.Mesh, x: number, z: number) {
     mesh.position.set(x + this.keySize/2 - 50, 0, z - 20);
     mesh.scale.y = 0.01;
     mesh.castShadow = true;
@@ -231,7 +237,7 @@ export class Keyboard {
     this.container.add(mesh);
   }
 
-  createKeyOutline(position, material) {
+  createKeyOutline(position: THREE.Vector3, _material: THREE.LineBasicMaterial) {
     const outlineGeometry = new THREE.BoxGeometry(
       this.keySize + 0.1,
       this.keySize + 0.1,
@@ -255,7 +261,7 @@ export class Keyboard {
     return outline;
   }
 
-  createBaseOutline(position) {
+  createBaseOutline(position: THREE.Vector3) {
     // Create a square outline at the base of the key
     const baseGeometry = new THREE.PlaneGeometry(this.keySize, this.keySize);
     const edges = new THREE.EdgesGeometry(baseGeometry);
@@ -276,7 +282,7 @@ export class Keyboard {
     return baseOutline;
   }
 
-  createKeyText(key, font, material) {
+  createKeyText(key: string, font: any, material: THREE.MeshPhysicalMaterial) {
     const textGeometry = new TextGeometry(key, {
       font: font,
       size: 2.5,
@@ -286,7 +292,7 @@ export class Keyboard {
     textGeometry.computeBoundingBox();
     const textMesh = new THREE.Mesh(textGeometry, material);
     
-    const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
+    const textWidth = textGeometry.boundingBox!.max.x - textGeometry.boundingBox!.min.x;
     textMesh.position.set(
       -textWidth/2,
       this.keySize/2 + 0.1,
@@ -296,7 +302,7 @@ export class Keyboard {
     return textMesh;
   }
 
-  updateKeyObject(key, targetHeight = null) {
+  updateKeyObject(key: string, targetHeight: number | null = null) {
     const mesh = this.keyObjects[key];
     const outline = this.outlineObjects[key];
     
@@ -311,7 +317,7 @@ export class Keyboard {
     outline.scale.y = displayHeight;
     outline.position.y = mesh.position.y;
 
-    mesh.material.forEach(material => {
+    (mesh.material as THREE.Material[]).forEach((material: any) => {
       if (material.emissive) {
         material.emissiveIntensity = displayHeight > 0.01 ? 0.2 : 0;
       }
@@ -328,7 +334,7 @@ export class Keyboard {
     }
   }
 
-  createWaveEffect(sourceKey) {
+  createWaveEffect(sourceKey: string) {
     const sourcePos = this.keyObjects[sourceKey].position.clone();
     Object.entries(this.keyObjects).forEach(([key, mesh]) => {
       const distance = sourcePos.distanceTo(mesh.position);
@@ -358,14 +364,14 @@ export class Keyboard {
     });
   }
 
-  resetWave(key, wave, mesh, outline) {
+  resetWave(key: string, wave: any, mesh: THREE.Mesh, outline: THREE.LineSegments) {
     wave.active = false;
     wave.time = 0;
     mesh.position.y = (this.keySize * this.keyHeights[key]) / 2;
     outline.position.y = mesh.position.y;
   }
 
-  updateWavePosition(key, wave, mesh, outline) {
+  updateWavePosition(key: string, wave: any, mesh: THREE.Mesh, outline: THREE.LineSegments) {
     const waveOffset = Math.sin(wave.time) * this.waveHeight * 
       (1 - wave.distance / this.waveRadius);
     mesh.position.y = (this.keySize * this.keyHeights[key]) / 2 + waveOffset;
@@ -392,7 +398,7 @@ export class Keyboard {
     });
   }
 
-  updateFromText(text) {
+  updateFromText(text: string) {
     this.resetAllKeys();
     
     if (!text || text === "type something and hit Ai Remix...") {
@@ -412,25 +418,25 @@ export class Keyboard {
     });
   }
 
-  processTextInput(text) {
+  processTextInput(text: string) {
     const charCounts = {};
     text.toLowerCase().split('').forEach(char => {
       if (this.keyObjects[char]) {
-        charCounts[char] = (charCounts[char] || 0) + 1;
+        (charCounts as any)[char] = ((charCounts as any)[char] || 0) + 1;
       }
     });
 
     Object.entries(charCounts).forEach(([char, count]) => {
       // CRITICAL: Character count determines height - this relationship is immutable
-      this.keyTypeCounts[char] = count;
-      this.keyHeights[char] = this.growthIncrement * count;
+      this.keyTypeCounts[char] = count as number;
+      this.keyHeights[char] = this.growthIncrement * (count as number);
       this.updateKeyObject(char);
       this.createWaveEffect(char);
     });
     
     // Ensure keys not in current text are reset to zero
     Object.keys(this.keyObjects).forEach(key => {
-      if (!charCounts[key]) {
+      if (!(charCounts as any)[key]) {
         this.keyTypeCounts[key] = 0;
         this.keyHeights[key] = 0;
         this.updateKeyObject(key);
@@ -438,11 +444,11 @@ export class Keyboard {
     });
   }
 
-  async animateKeyDown(key, startHeight) {
-    return new Promise(resolve => {
+  async animateKeyDown(key: string, startHeight: number) {
+    return new Promise<void>(resolve => {
       const steps = 60;
       const duration = 1000; // Fixed duration for smooth animation
-      const stepTime = duration / steps;
+      const _stepTime = duration / steps;
       let currentStep = 0;
       
       const animate = () => {
@@ -621,7 +627,7 @@ export class Keyboard {
     const totalDuration = 100; // Total animation time in ms
     const startTime = performance.now();
 
-    return new Promise(resolve => {
+    return new Promise<void>(resolve => {
       const animate = (currentTime: number) => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / totalDuration, 1);
@@ -680,11 +686,11 @@ export class Keyboard {
   }
 
   increaseHeight() {
-    this.isIncreasing = true;
+    this._isIncreasing = true;
   }
 
   decreaseHeight() {
-    this.isIncreasing = false;
+    this._isIncreasing = false;
   }
 
   updateRotation() {
@@ -724,7 +730,7 @@ export class Keyboard {
     // This method is kept for compatibility
   }
 
-  private updateAiRemixAnimation() {
+  private _updateAiRemixAnimation() {
     if (!this.aiRemixAnimation.isActive) return;
 
     const currentTime = performance.now();
@@ -746,7 +752,7 @@ export class Keyboard {
     });
   }
 
-  private createGlobalWaveEffect() {
+  private _createGlobalWaveEffect() {
     // Create waves from multiple points for a dramatic finish
     const waveOrigins = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'];
     
@@ -785,7 +791,7 @@ export class Keyboard {
             });
         
         // Update the material array
-        materials[2] = newTopMaterial;
+        (materials as any)[2] = newTopMaterial;
         
         // Update the mesh materials
         if (Array.isArray(mesh.material)) {
@@ -795,7 +801,7 @@ export class Keyboard {
       
       // Update side materials - indices 0, 1, 3, 4, 5
       [0, 1, 3, 4, 5].forEach(index => {
-        const sideMaterial = materials[index] as THREE.MeshBasicMaterial;
+        const sideMaterial = materials[index] as unknown as THREE.MeshBasicMaterial;
         if (sideMaterial) {
           sideMaterial.color.setHex(isDarkMode ? 0x333333 : 0xdddddd);
         }
@@ -810,21 +816,21 @@ export class Keyboard {
     // Update all existing outlines
     Object.values(this.outlineObjects).forEach(outline => {
       if (outline.material) {
-        outline.material.color.setHex(isDarkMode ? 0xfcfaf6 : 0x3c4142);
-        outline.material.opacity = isDarkMode ? 0.8 : 0.60;
+        (outline.material as any).color.setHex(isDarkMode ? 0xfcfaf6 : 0x3c4142);
+        (outline.material as any).opacity = isDarkMode ? 0.8 : 0.60;
       }
     });
     
     // Update all existing base outlines
     Object.values(this.baseOutlineObjects).forEach(baseOutline => {
       if (baseOutline.material) {
-        baseOutline.material.color.setHex(isDarkMode ? 0xffffff : 0x3c4142);
-        baseOutline.material.opacity = isDarkMode ? 0.6 : 0.4;
+        (baseOutline.material as any).color.setHex(isDarkMode ? 0xffffff : 0x3c4142);
+        (baseOutline.material as any).opacity = isDarkMode ? 0.6 : 0.4;
       }
     });
   }
 
-  updateKeyCapFont(fontFamily: string, fontName: string) {
+  updateKeyCapFont(_fontFamily: string, fontName: string) {
     // Check if the font is loaded
     if (!this.loadedFonts[fontName]) {
       console.warn(`Font ${fontName} not loaded, keeping current font`);

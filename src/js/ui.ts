@@ -1157,7 +1157,7 @@ export class UI {
     },
     width: number,
     height: number,
-    isMobile: boolean = false
+    _isMobile: boolean = false
   ): void {
     if (!config?.bar?.bottomMargin || !config?.margin?.side) {
       console.error('Invalid config object for drawCharacterBar');
@@ -1256,7 +1256,7 @@ export class UI {
     this.drawSegmentLabel(ctx, char, count, x, y, actualWidth, height, this.getCharacterColor(char, count));
   }
 
-  private getCharacterColor(char: string, count: number = 1): string {
+  private getCharacterColor(char: string, _count: number = 1): string {
     // Simple color hash based on character code
     const colors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',

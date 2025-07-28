@@ -14,16 +14,16 @@
  * 
  * window.addEventListener('resize', handleResize);
  */
-export function debounce(func, wait) {
-  let timeoutId;
+export function debounce(func: (...args: any[]) => any, wait: number) {
+  let timeoutId: NodeJS.Timeout | undefined;
   
-  return function executedFunction(...args) {
+  return function executedFunction(...args: any[]) {
     const later = () => {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId as NodeJS.Timeout);
       func(...args);
     };
     
-    clearTimeout(timeoutId);
+    clearTimeout(timeoutId as NodeJS.Timeout);
     timeoutId = setTimeout(later, wait);
   };
 }
@@ -44,10 +44,10 @@ export function debounce(func, wait) {
  * 
  * window.addEventListener('scroll', handleScroll);
  */
-export function throttle(func, limit) {
-  let inThrottle;
+export function throttle(func: (...args: any[]) => any, limit: number) {
+  let inThrottle: boolean;
   
-  return function executedFunction(...args) {
+  return function executedFunction(...args: any[]) {
     if (!inThrottle) {
       func(...args);
       inThrottle = true;
@@ -71,7 +71,7 @@ export function throttle(func, limit) {
  *   console.log('End after 1 second');
  * }
  */
-export function delay(ms) {
+export function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -86,7 +86,7 @@ export function delay(ms) {
  * @example
  * const value = clamp(150, 0, 100); // returns 100
  */
-export function clamp(value, min, max) {
+export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
@@ -101,7 +101,7 @@ export function clamp(value, min, max) {
  * @example
  * const value = lerp(0, 100, 0.5); // returns 50
  */
-export function lerp(start, end, t) {
+export function lerp(start: number, end: number, t: number) {
   return start * (1 - t) + end * t;
 }
 
@@ -114,7 +114,7 @@ export function lerp(start, end, t) {
  * @example
  * const value = easeInOut(0.5); // returns smooth interpolated value
  */
-export function easeInOut(t) {
+export function easeInOut(t: number) {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 }
 
@@ -128,7 +128,7 @@ export function easeInOut(t) {
  * @example
  * const value = random(1, 10); // returns random number between 1 and 10
  */
-export function random(min, max) {
+export function random(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
@@ -142,8 +142,8 @@ export function random(min, max) {
  * @example
  * const value = formatNumber(123.4567, 2); // returns "123.46"
  */
-export function formatNumber(value, decimals = 2) {
-  return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals).toFixed(decimals);
+export function formatNumber(value: number, decimals: number = 2) {
+  return Number(Math.round(parseFloat(value + 'e' + decimals)) + 'e-' + decimals).toFixed(decimals);
 }
 
 /**
@@ -157,6 +157,6 @@ export function formatNumber(value, decimals = 2) {
  * @example
  * const isInRange = isBetween(5, 1, 10); // returns true
  */
-export function isBetween(value, min, max) {
+export function isBetween(value: number, min: number, max: number) {
   return value >= min && value <= max;
 }

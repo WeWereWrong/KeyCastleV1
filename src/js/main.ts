@@ -5,13 +5,13 @@ import { UI } from './ui';
 class Application {
   private scene: Scene | null;
   private keyboard: Keyboard | null;
-  private ui: UI | null;
+  private _ui: UI | null;
   private isRunning: boolean;
 
   constructor() {
     this.scene = null;
     this.keyboard = null;
-    this.ui = null;
+    this._ui = null;
     this.isRunning = false;
   }
 
@@ -20,7 +20,7 @@ class Application {
       // Initialize core components
       this.scene = new Scene();
       this.keyboard = new Keyboard(this.scene);
-      this.ui = new UI(this.keyboard, this.scene.renderer);
+      this._ui = new UI(this.keyboard, (this.scene as any).renderer);
       
       // Start animation loop
       this.isRunning = true;
@@ -56,8 +56,8 @@ class Application {
       }
       
       if (this.scene) {
-        this.scene.controls.update();
-        this.scene.renderer.render(this.scene.scene, this.scene.camera);
+        (this.scene as any).controls.update();
+        (this.scene as any).renderer.render((this.scene as any).scene, (this.scene as any).camera);
       }
     } catch (error) {
       console.error('Animation loop error:', error);
@@ -113,13 +113,13 @@ class Application {
     
     // Cleanup resources
     if (this.scene) {
-      this.scene.renderer.dispose();
-      this.scene.controls.dispose();
+      (this.scene as any).renderer.dispose();
+      (this.scene as any).controls.dispose();
     }
     
     // Remove event listeners
     if (this.scene) {
-      window.removeEventListener('resize', this.scene.handleResize);
+      window.removeEventListener('resize', (this.scene as any).handleResize);
     }
   }
 }
