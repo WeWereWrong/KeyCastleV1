@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=1.0" />
+    <title>Keyboard City</title>
+    <link rel="stylesheet" href="./src/styles/main.css">
+  </head>
+  <body>
+    <div id="warning">
+      Switch to <strong>Castle</strong> mode to see the keys pop up!
+      <br>
+      <button onclick="this.parentElement.style.display='none'">Got it</button>
+    </div>
+    <div id="textDisplay" contenteditable="true">
+      type something and click Reword or just hit enter
+      <button id="clearButton">×</button>
+    </div>
+    <div id="typingSpeed">0 WPM</div>
+    <div id="characterCount">0/90 characters</div>
+    <div id="characterBar">
+      <div id="characterBarSegments"></div>
+    </div>
+    <div id="mobileTextDisplay" contenteditable="true">type something to see the visualization</div>
+    <div id="controls">
+      <div style="display: flex; width: 100%; gap: 0;">
+        <button id="heightUp" class="active">Castle ↑</button>
+        <button id="heightDown">Clear ↓</button>
+        <button id="type">Type</button>
+      </div>
+      <div id="shadowControls">
+        <input type="range" id="shadowAngle" min="0" max="360" value="45" />
+      </div>
+      <div style="display: flex; width: 100%; gap: 12px; align-items: center;">
+        <div id="fontControls">
+          <button id="fontPrev">←</button>
+          <span id="fontName">System</span>
+          <button id="fontNext">→</button>
+        </div>
+        <button id="previewAndPrint">Preview Poster</button>
+      </div>
+    </div>
+
+    <div id="previewModal">
+      <div id="previewContent">
+        <div id="previewImageContainer">
+          <img id="previewImage" alt="Preview" />
+        </div>
+        <div id="previewControls">
+          <button id="printFromPreview">Print Poster</button>
+          <button id="closePreview">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/js/main.ts"></script>
+  </body>
+</html>

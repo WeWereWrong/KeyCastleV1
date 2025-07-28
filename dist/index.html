@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=1.0" />
+    <title>Keyboard City</title>
+    <script type="module" crossorigin src="/assets/index-B5Bsf3-K.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B0gMBTni.css">
+  </head>
+  <body>
+    <div id="warning">
+      Switch to <strong>Castle</strong> mode to see the keys pop up!
+      <br>
+      <button onclick="this.parentElement.style.display='none'">Got it</button>
+    </div>
+    <div id="textDisplay" contenteditable="true">
+      Write something and hit Poetize ✦ to build a key castle...
+      <button id="clearButton">×</button>
+    </div>
+    <div id="characterCount">0/90 characters</div>
+    <div id="characterBar">
+      <div id="characterBarSegments"></div>
+    </div>
+    <div id="mobileTextDisplay" contenteditable="true">Write something and hit Poetize ✦ to build a key castle...</div>
+    <div id="controls">
+      <div style="display: flex; width: 100%; gap: 0;">
+        <button id="heightUp" class="active">Castle ↑</button>
+        <button id="heightDown">Clear ↓</button>
+        <button id="type">Type</button>
+      </div>
+      <div id="shadowControls">
+        <label for="shadowAngle">☀︎</label>
+        <input type="range" id="shadowAngle" min="0" max="360" value="45" />
+      </div>
+      <button id="previewAndPrint">Preview & Print Poster</button>
+    </div>
+
+    <div id="previewModal">
+      <div id="previewContent">
+        <img id="previewImage" alt="Preview" />
+        <div id="previewControls">
+          <button id="printFromPreview">Print Poster</button>
+          <button id="closePreview">Close</button>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
