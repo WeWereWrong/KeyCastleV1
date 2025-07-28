@@ -174,12 +174,12 @@ export class UI {
 
   private async modifyTextWithAI(text: string): Promise<string> {
     try {
-      // Use hardcoded values instead of environment variables
-      const supabaseUrl = 'https://xmxyfwqfdkqvfxfuxjnf.supabase.co';
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhteHlmd3FmZGtxdmZ4ZnV4am5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MjU1ODYsImV4cCI6MjA0OTk4MTU4Nn0.fKVdUNHNXNjUDnqCqYjV6Zp0R5LX6c-3lxYo4VW0p5c';
+      // Use environment variables for security
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase configuration is missing');
+        throw new Error('Supabase configuration is missing. Please check your environment variables.');
       }
       
       const fetchUrl = `${supabaseUrl}/functions/v1/openai`;
