@@ -396,8 +396,9 @@ canvas {
   user-select: text;
   cursor: text;
   touch-action: manipulation;
-  -webkit-user-modify: read-write;
   -webkit-tap-highlight-color: transparent;
+  direction: ltr;
+  unicode-bidi: plaintext;
   caret-color: var(--text-color);
 }
 

@@ -167,32 +167,22 @@ export class UI {
       typingSpeed: document.getElementById('typingSpeed')
     };
 
-    // AI functionality has been disabled
-    // this.createAIButton();
+    this.setupAIButtonListener();
   }
 
   // Removed unused createAIButton method
 
   private async modifyTextWithAI(text: string): Promise<string> {
-    // AI feature is temporarily disabled
-    console.log('AI text generation is currently disabled.');
-    return text;
-    
-    /* Original AI implementation (disabled)
     try {
-      // Debug environment variables
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      console.log('Supabase URL:', supabaseUrl);
-      console.log('Supabase Key exists:', !!supabaseKey);
+      // Use hardcoded values instead of environment variables
+      const supabaseUrl = 'https://xmxyfwqfdkqvfxfuxjnf.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhteHlmd3FmZGtxdmZ4ZnV4am5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MjU1ODYsImV4cCI6MjA0OTk4MTU4Nn0.fKVdUNHNXNjUDnqCqYjV6Zp0R5LX6c-3lxYo4VW0p5c';
       
       if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase configuration is missing. Please check your environment variables.');
+        throw new Error('Supabase configuration is missing');
       }
       
       const fetchUrl = `${supabaseUrl}/functions/v1/openai`;
-      console.log('Fetching from:', fetchUrl);
       
       const response = await fetch(fetchUrl, {
         method: 'POST',
@@ -232,7 +222,6 @@ export class UI {
       this.showError(errorMessage);
       return text;
     }
-    */
   }
 
   private showError(message: string) {
@@ -469,15 +458,23 @@ export class UI {
           element.textContent = '';
         }
 
-        const selection = window.getSelection();
-        if (!selection) return;
-        
-        const range = selection.getRangeAt(0);
-        const cursorPosition = range.startOffset;
+        // For mobile, use a simpler approach to avoid cursor issues
+        const isMobile = window.innerWidth <= 480;
+        if (isMobile && element === this.elements.mobileTextDisplay) {
+          const currentText = element.textContent || '';
+          const newText = currentText + cleanText;
+          element.textContent = newText.slice(0, this.maxCharacters);
+        } else {
+          const selection = window.getSelection();
+          if (!selection) return;
+          
+          const range = selection.getRangeAt(0);
+          const cursorPosition = range.startOffset;
 
-        const currentText = element.textContent || '';
-        const newText = currentText.slice(0, cursorPosition) + cleanText + currentText.slice(cursorPosition);
-        element.textContent = newText.slice(0, this.maxCharacters);
+          const currentText = element.textContent || '';
+          const newText = currentText.slice(0, cursorPosition) + cleanText + currentText.slice(cursorPosition);
+          element.textContent = newText.slice(0, this.maxCharacters);
+        }
         
         this.updateDisplays(element.textContent || '');
       });
