@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=1.0" />
     <title>Keyboard City</title>
-    <script type="module" crossorigin src="/assets/index-B5Bsf3-K.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-B0gMBTni.css">
+    <script type="module" crossorigin src="/assets/main-BZ5NoBpr.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/main-BBiQOknJ.css">
   </head>
   <body>
     <div id="warning">
@@ -14,30 +14,99 @@
       <button onclick="this.parentElement.style.display='none'">Got it</button>
     </div>
     <div id="textDisplay" contenteditable="true">
-      Write something and hit Poetize ✦ to build a key castle...
+      type something and click Reword or just hit enter
       <button id="clearButton">×</button>
     </div>
+    <div id="typingSpeed">0 WPM</div>
     <div id="characterCount">0/90 characters</div>
     <div id="characterBar">
       <div id="characterBarSegments"></div>
     </div>
-    <div id="mobileTextDisplay" contenteditable="true">Write something and hit Poetize ✦ to build a key castle...</div>
+    <div id="mobileTextDisplay" contenteditable="true">type something to see the visualization</div>
+    <!-- Authentication UI -->
+    <div id="authContainer" class="hidden">
+      <button id="loginBtn">Sign In</button>
+      <div id="userMenu" class="hidden">
+        <span id="userEmail"></span>
+        <button id="logoutBtn">Sign Out</button>
+      </div>
+    </div>
+
     <div id="controls">
-      <div style="display: flex; width: 100%; gap: 0;">
+      <div style="display: flex; width: 100%; gap: 12px;">
         <button id="heightUp" class="active">Castle ↑</button>
         <button id="heightDown">Clear ↓</button>
+        <button id="aiButton" class="attention" disabled>Reword ✦</button>
         <button id="type">Type</button>
       </div>
       <div id="shadowControls">
-        <label for="shadowAngle">☀︎</label>
         <input type="range" id="shadowAngle" min="0" max="360" value="45" />
       </div>
-      <button id="previewAndPrint">Preview & Print Poster</button>
+      <div style="display: flex; width: 100%; gap: 12px; align-items: center;">
+        <div id="fontControls">
+          <button id="fontPrev">←</button>
+          <span id="fontName">System</span>
+          <button id="fontNext">→</button>
+        </div>
+        <button id="previewAndPrint">Preview Poster</button>
+      </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div id="authModal" class="modal">
+      <div id="authContent" class="modal-content">
+        <div id="authTabs">
+          <button id="loginTab" class="auth-tab active">Sign In</button>
+          <button id="signupTab" class="auth-tab">Sign Up</button>
+        </div>
+        
+        <div id="loginForm" class="auth-form">
+          <h2>Welcome Back</h2>
+          <p>Sign in to access AI features</p>
+          <form id="loginFormElement">
+            <input type="email" id="loginEmail" placeholder="Email" required />
+            <input type="password" id="loginPassword" placeholder="Password" required />
+            <button type="submit" id="loginSubmit">Sign In</button>
+          </form>
+          <div class="auth-divider">
+            <span>or</span>
+          </div>
+          <button id="googleLoginBtn" class="google-btn">
+            <span class="google-icon">G</span>
+            Continue with Google
+          </button>
+          <div class="auth-links">
+            <a href="#" id="forgotPasswordLink">Forgot password?</a>
+          </div>
+        </div>
+
+        <div id="signupForm" class="auth-form hidden">
+          <h2>Create Account</h2>
+          <p>Join to unlock AI-powered text rewriting</p>
+          <form id="signupFormElement">
+            <input type="email" id="signupEmail" placeholder="Email" required />
+            <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required minlength="6" />
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required />
+            <button type="submit" id="signupSubmit">Create Account</button>
+          </form>
+          <div class="auth-divider">
+            <span>or</span>
+          </div>
+          <button id="googleSignupBtn" class="google-btn">
+            <span class="google-icon">G</span>
+            Continue with Google
+          </button>
+        </div>
+
+        <button id="closeAuthModal" class="close-btn">×</button>
+      </div>
     </div>
 
     <div id="previewModal">
       <div id="previewContent">
-        <img id="previewImage" alt="Preview" />
+        <div id="previewImageContainer">
+          <img id="previewImage" alt="Preview" />
+        </div>
         <div id="previewControls">
           <button id="printFromPreview">Print Poster</button>
           <button id="closePreview">Close</button>

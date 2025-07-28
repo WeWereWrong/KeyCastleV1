@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.53.0",
     "@types/three": "^0.162.0",
     "openai": "^4.28.0",
     "three": "^0.162.0"

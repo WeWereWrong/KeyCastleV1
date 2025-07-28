@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { authService } from './auth';
 
 interface UIElements {
   // Core UI Elements
@@ -138,6 +139,7 @@ export class UI {
     };
     this.setupElements();
     this.setupEventListeners();
+    this.setupAuthenticationSystem();
     this.loadThemePreference();
     
     // Set initial placeholder state with blinking cursor
@@ -174,12 +176,17 @@ export class UI {
 
   private async modifyTextWithAI(text: string): Promise<string> {
     try {
+      // Check if user is authenticated
+      if (!authService.isAuthenticated()) {
+        throw new Error('Please sign in to use AI features');
+      }
+      
       // Use environment variables for security
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const accessToken = authService.getAccessToken();
       
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase configuration is missing. Please check your environment variables.');
+      if (!supabaseUrl || !accessToken) {
+        throw new Error('Authentication required. Please sign in to continue.');
       }
       
       const fetchUrl = `${supabaseUrl}/functions/v1/openai`;
@@ -188,12 +195,15 @@ export class UI {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({ text })
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication expired. Please sign in again.');
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Server error: ${response.status} - ${response.statusText}`);
       }
@@ -210,8 +220,10 @@ export class UI {
       let errorMessage = 'Unable to generate text. Please try again.';
       
       if (error instanceof Error) {
-        if (error.message.includes('Supabase configuration is missing')) {
-          errorMessage = 'Configuration error. Please check your setup.';
+        if (error.message.includes('Please sign in')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('Authentication')) {
+          errorMessage = error.message;
         } else if (error.message.includes('Failed to fetch')) {
           errorMessage = 'Network error. Please check your connection and try again.';
         } else if (error.message === 'Please enter some text first') {
@@ -224,30 +236,50 @@ export class UI {
     }
   }
 
-  private showError(message: string) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-family: system-ui;
-      font-size: 14px;
-      border: 1px solid #fecaca;
-      z-index: 2000;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    `;
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
+  private showError(message: string, isError: boolean = true) {
+    const messageDiv = document.createElement('div');
+    
+    if (isError) {
+      messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-family: system-ui;
+        font-size: 14px;
+        border: 1px solid #fecaca;
+        z-index: 2000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      `;
+    } else {
+      messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #d1fae5;
+        color: #065f46;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-family: system-ui;
+        font-size: 14px;
+        border: 1px solid #a7f3d0;
+        z-index: 2000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      `;
+    }
+    
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
     
     setTimeout(() => {
-      errorDiv.style.opacity = '0';
-      errorDiv.style.transition = 'opacity 0.3s ease';
-      setTimeout(() => errorDiv.remove(), 300);
+      messageDiv.style.opacity = '0';
+      messageDiv.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => messageDiv.remove(), 300);
     }, 3000);
   }
 
@@ -423,10 +455,29 @@ export class UI {
       }
 
       if (text.length > this.maxCharacters) {
-        element.textContent = text.slice(0, this.maxCharacters);
+        // Save cursor position before truncating
+        const selection = window.getSelection();
+        let cursorPosition = 0;
+        
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          cursorPosition = range.startOffset;
+        }
+        
+        // Truncate text
+        const truncatedText = text.slice(0, this.maxCharacters);
+        element.textContent = truncatedText;
+        
+        // Restore cursor position (but not beyond the truncated length)
+        const newCursorPosition = Math.min(cursorPosition, truncatedText.length);
+        this.setCursorToEnd(element, newCursorPosition);
+        
+        this.updateDisplays(truncatedText);
+        return;
       }
 
-      this.updateDisplays(text);
+      // Skip text update to preserve cursor position during normal typing
+      this.updateDisplays(text, true);
     };
 
     [this.elements.textDisplay, this.elements.mobileTextDisplay].forEach(element => {
@@ -483,7 +534,15 @@ export class UI {
 
   private setupKeyboardListeners() {
     document.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (!this.elements.textDisplay?.matches(':focus') && !this.elements.mobileTextDisplay?.matches(':focus')) {
+      // Check if any modal input is focused or modal is open
+      const authModal = document.getElementById('authModal');
+      const isModalOpen = authModal?.classList.contains('show');
+      const isInputFocused = document.activeElement?.tagName === 'INPUT' || 
+                            document.activeElement?.tagName === 'TEXTAREA' ||
+                            this.elements.textDisplay?.matches(':focus') || 
+                            this.elements.mobileTextDisplay?.matches(':focus');
+      
+      if (!isInputFocused && !isModalOpen) {
         this.handleUnfocusedKeyPress(e);
       }
     });
@@ -497,10 +556,16 @@ export class UI {
     // Add spacebar trigger for Preview & Print (desktop only)
     document.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === ' ' || e.code === 'Space') {
-        // Only trigger if not focused on text inputs and not on mobile
-        if (!this.elements.textDisplay?.matches(':focus') && 
-            !this.elements.mobileTextDisplay?.matches(':focus') &&
-            window.innerWidth > 480) {
+        // Check if any modal input is focused or modal is open
+        const authModal = document.getElementById('authModal');
+        const isModalOpen = authModal?.classList.contains('show');
+        const isInputFocused = document.activeElement?.tagName === 'INPUT' || 
+                              document.activeElement?.tagName === 'TEXTAREA' ||
+                              this.elements.textDisplay?.matches(':focus') || 
+                              this.elements.mobileTextDisplay?.matches(':focus');
+        
+        // Only trigger if not focused on any inputs, modal not open, and not on mobile
+        if (!isInputFocused && !isModalOpen && window.innerWidth > 480) {
           e.preventDefault();
           this.showPreview();
         }
@@ -593,7 +658,19 @@ export class UI {
 
   private async triggerAIRemix() {
     const aiButton = document.getElementById('aiButton') as HTMLButtonElement;
-    if (!aiButton || aiButton.disabled) return;
+    if (!aiButton) return;
+    
+    // Check authentication - allow pseudo-disabled button clicks to trigger sign-in
+    if (!authService.isAuthenticated() || aiButton.classList.contains('pseudo-disabled')) {
+      // Open sign in modal immediately without error message for better UX
+      const authModal = document.getElementById('authModal');
+      authModal?.classList.add('show');
+      this.switchAuthTab('login');
+      return;
+    }
+    
+    // If we get here, user is authenticated and button is fully enabled
+    if (aiButton.disabled) return;
 
     // Remove attention animation on first use
     if (this.aiButtonFirstUse) {
@@ -618,6 +695,8 @@ export class UI {
       // First, clear existing keys with backspace animation
       if (currentText && currentText.trim()) {
         await this.keyboard.animateBackspaceSequence(currentText);
+        // Clear the UI displays after backspace animation
+        this.updateDisplays('');
       }
       
       // Then generate AI text after clearing is complete
@@ -648,11 +727,218 @@ export class UI {
     }
   }
 
+  private setupAuthenticationSystem() {
+    // Initialize authentication UI elements
+    const authContainer = document.getElementById('authContainer');
+    const loginBtn = document.getElementById('loginBtn');
+    const userMenu = document.getElementById('userMenu');
+    const userEmail = document.getElementById('userEmail');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authModal = document.getElementById('authModal');
+    const closeAuthModal = document.getElementById('closeAuthModal');
+    
+    // Authentication tabs
+    const loginTab = document.getElementById('loginTab');
+    const signupTab = document.getElementById('signupTab');
+    
+    // Form elements
+    const loginFormElement = document.getElementById('loginFormElement');
+    const signupFormElement = document.getElementById('signupFormElement');
+    const googleLoginBtn = document.getElementById('googleLoginBtn');
+    const googleSignupBtn = document.getElementById('googleSignupBtn');
+    
+    if (!authContainer || !loginBtn || !userMenu || !userEmail || !logoutBtn || !authModal) return;
+    
+    // Show authentication container
+    authContainer.classList.remove('hidden');
+    
+    // Set up event listeners
+    loginBtn.addEventListener('click', () => {
+      authModal.classList.add('show');
+      this.switchAuthTab('login');
+    });
+    
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await authService.signOut();
+      } catch (error) {
+        console.error('Logout error:', error);
+        this.showError('Failed to sign out. Please try again.');
+      }
+    });
+    
+    closeAuthModal?.addEventListener('click', () => {
+      authModal.classList.remove('show');
+    });
+    
+    // Close modal when clicking outside
+    authModal.addEventListener('click', (e) => {
+      if (e.target === authModal) {
+        authModal.classList.remove('show');
+      }
+    });
+    
+    // Tab switching
+    loginTab?.addEventListener('click', () => this.switchAuthTab('login'));
+    signupTab?.addEventListener('click', () => this.switchAuthTab('signup'));
+    
+    // Form submissions
+    loginFormElement?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target as HTMLFormElement;
+      const emailInput = form.querySelector('#loginEmail') as HTMLInputElement;
+      const passwordInput = form.querySelector('#loginPassword') as HTMLInputElement;
+      
+      if (!emailInput || !passwordInput) return;
+      
+      await this.handleLogin(emailInput.value, passwordInput.value);
+    });
+    
+    signupFormElement?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target as HTMLFormElement;
+      const emailInput = form.querySelector('#signupEmail') as HTMLInputElement;
+      const passwordInput = form.querySelector('#signupPassword') as HTMLInputElement;
+      const confirmPasswordInput = form.querySelector('#confirmPassword') as HTMLInputElement;
+      
+      if (!emailInput || !passwordInput || !confirmPasswordInput) return;
+      
+      if (passwordInput.value !== confirmPasswordInput.value) {
+        this.showError('Passwords do not match');
+        return;
+      }
+      
+      await this.handleSignup(emailInput.value, passwordInput.value);
+    });
+    
+    // Google authentication
+    googleLoginBtn?.addEventListener('click', async () => {
+      await this.handleGoogleAuth();
+    });
+    
+    googleSignupBtn?.addEventListener('click', async () => {
+      await this.handleGoogleAuth();
+    });
+    
+    // Listen for authentication state changes
+    document.addEventListener('authStateChange', ((event: CustomEvent) => {
+      const { session, user } = event.detail;
+      this.updateAuthUI(session, user);
+    }) as EventListener);
+    
+    // Initialize UI state
+    this.updateAuthUI(authService.getCurrentSession(), authService.getCurrentUser());
+  }
+  
+  private switchAuthTab(tab: 'login' | 'signup') {
+    const loginTab = document.getElementById('loginTab');
+    const signupTab = document.getElementById('signupTab');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    
+    if (!loginTab || !signupTab || !loginForm || !signupForm) return;
+    
+    if (tab === 'login') {
+      loginTab.classList.add('active');
+      signupTab.classList.remove('active');
+      loginForm.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+    } else {
+      signupTab.classList.add('active');
+      loginTab.classList.remove('active');
+      signupForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+    }
+  }
+  
+  private async handleLogin(email: string, password: string) {
+    const submitBtn = document.getElementById('loginSubmit') as HTMLButtonElement;
+    if (!submitBtn) return;
+    
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing In...';
+    
+    try {
+      await authService.signIn(email, password);
+      const authModal = document.getElementById('authModal');
+      authModal?.classList.remove('show');
+    } catch (error) {
+      console.error('Login error:', error);
+      this.showError('Failed to sign in. Please check your credentials.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+  
+  private async handleSignup(email: string, password: string) {
+    const submitBtn = document.getElementById('signupSubmit') as HTMLButtonElement;
+    if (!submitBtn) return;
+    
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating Account...';
+    
+    try {
+      await authService.signUp(email, password);
+      this.showError('Please check your email to verify your account.', false);
+      const authModal = document.getElementById('authModal');
+      authModal?.classList.remove('show');
+    } catch (error) {
+      console.error('Signup error:', error);
+      this.showError('Failed to create account. Please try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+  
+  private async handleGoogleAuth() {
+    try {
+      await authService.signInWithGoogle();
+    } catch (error) {
+      console.error('Google auth error:', error);
+      this.showError('Failed to sign in with Google. Please try again.');
+    }
+  }
+  
+  private updateAuthUI(session: any, user: any) {
+    const authContainer = document.getElementById('authContainer');
+    const loginBtn = document.getElementById('loginBtn');
+    const userMenu = document.getElementById('userMenu');
+    const userEmail = document.getElementById('userEmail');
+    const aiButton = document.getElementById('aiButton') as HTMLButtonElement;
+    
+    if (!authContainer || !loginBtn || !userMenu || !userEmail || !aiButton) return;
+    
+    if (session && user) {
+      // User is authenticated
+      loginBtn.classList.add('hidden');
+      userMenu.classList.remove('hidden');
+      userEmail.textContent = user.email || 'User';
+      
+      // Enable AI button fully
+      aiButton.disabled = false;
+      aiButton.classList.remove('pseudo-disabled');
+    } else {
+      // User is not authenticated
+      loginBtn.classList.remove('hidden');
+      userMenu.classList.add('hidden');
+      
+      // Don't actually disable the button - just style it as disabled
+      aiButton.disabled = false;
+      aiButton.classList.add('pseudo-disabled');
+    }
+  }
+
   private setupAIButtonListener() {
     const aiButton = document.getElementById('aiButton');
     if (!aiButton) return;
 
-    aiButton.addEventListener('click', async () => {
+    // Simple click listener - button is never actually disabled now
+    aiButton.addEventListener('click', async (e) => {
+      e.preventDefault();
       await this.triggerAIRemix();
     });
   }
@@ -662,7 +948,7 @@ export class UI {
     return this.hasInteracted ? text : '';
   }
 
-  private updateDisplays(text: string) {
+  private updateDisplays(text: string, skipTextUpdate = false) {
     const displayText = !this.hasInteracted && !text 
       ? 'type something and click Reword or just hit enter' 
       : text;
@@ -670,20 +956,39 @@ export class UI {
     // Set placeholder attribute for blinking cursor
     const isPlaceholder = !this.hasInteracted && !text;
     
-    if (this.elements.textDisplay) {
-      this.elements.textDisplay.textContent = displayText;
-      if (isPlaceholder) {
-        this.elements.textDisplay.setAttribute('data-placeholder', 'true');
-      } else {
-        this.elements.textDisplay.removeAttribute('data-placeholder');
+    // Only update textContent if explicitly requested (to avoid cursor reset)
+    if (!skipTextUpdate) {
+      if (this.elements.textDisplay) {
+        this.elements.textDisplay.textContent = displayText;
+        if (isPlaceholder) {
+          this.elements.textDisplay.setAttribute('data-placeholder', 'true');
+        } else {
+          this.elements.textDisplay.removeAttribute('data-placeholder');
+        }
       }
-    }
-    if (this.elements.mobileTextDisplay) {
-      this.elements.mobileTextDisplay.textContent = displayText;
-      if (isPlaceholder) {
-        this.elements.mobileTextDisplay.setAttribute('data-placeholder', 'true');
-      } else {
-        this.elements.mobileTextDisplay.removeAttribute('data-placeholder');
+      if (this.elements.mobileTextDisplay) {
+        this.elements.mobileTextDisplay.textContent = displayText;
+        if (isPlaceholder) {
+          this.elements.mobileTextDisplay.setAttribute('data-placeholder', 'true');
+        } else {
+          this.elements.mobileTextDisplay.removeAttribute('data-placeholder');
+        }
+      }
+    } else {
+      // Just update placeholder attributes without touching textContent
+      if (this.elements.textDisplay) {
+        if (isPlaceholder) {
+          this.elements.textDisplay.setAttribute('data-placeholder', 'true');
+        } else {
+          this.elements.textDisplay.removeAttribute('data-placeholder');
+        }
+      }
+      if (this.elements.mobileTextDisplay) {
+        if (isPlaceholder) {
+          this.elements.mobileTextDisplay.setAttribute('data-placeholder', 'true');
+        } else {
+          this.elements.mobileTextDisplay.removeAttribute('data-placeholder');
+        }
       }
     }
 
@@ -694,8 +999,50 @@ export class UI {
 
   private resetTextDisplays() {
     this.hasInteracted = false;
+    
+    // Clear text displays without forcing cursor position
+    if (this.elements.textDisplay) {
+      this.elements.textDisplay.textContent = '';
+      this.elements.textDisplay.removeAttribute('data-placeholder');
+      // Force text direction
+      this.elements.textDisplay.style.direction = 'ltr';
+      this.elements.textDisplay.style.textAlign = 'left';
+    }
+    if (this.elements.mobileTextDisplay) {
+      this.elements.mobileTextDisplay.textContent = '';
+      this.elements.mobileTextDisplay.removeAttribute('data-placeholder');  
+      // Force text direction
+      this.elements.mobileTextDisplay.style.direction = 'ltr';
+      this.elements.mobileTextDisplay.style.textAlign = 'left';
+    }
+    
     this.updateDisplays('');
     this.resetTypingStats();
+  }
+  
+  
+  private setCursorToEnd(element: HTMLElement, position?: number) {
+    try {
+      const range = document.createRange();
+      const selection = window.getSelection();
+      
+      if (element.childNodes.length > 0) {
+        const textNode = element.childNodes[0];
+        const textLength = textNode.textContent?.length || 0;
+        const cursorPos = position !== undefined ? Math.min(position, textLength) : textLength;
+        range.setStart(textNode, cursorPos);
+        range.setEnd(textNode, cursorPos);
+      } else {
+        range.setStart(element, 0);
+        range.setEnd(element, 0);
+      }
+      
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    } catch (error) {
+      // Ignore cursor positioning errors
+      console.debug('Could not set cursor to end:', error);
+    }
   }
 
   private updateCharacterCount(text: string) {
@@ -727,8 +1074,37 @@ export class UI {
   }
   
   private downloadPoster(): void {
-    // Implementation for downloading poster
-    console.log('Download poster functionality will be implemented here');
+    try {
+      // Generate the poster image canvas
+      const canvas = this.generatePosterImage();
+      
+      // Create download link
+      const link = document.createElement('a');
+      const currentText = this.getDisplayText();
+      const fileName = currentText 
+        ? `keycastle-poster-${currentText.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '-')}.png`
+        : 'keycastle-poster.png';
+      
+      // Convert canvas to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          
+          // Show success message
+          this.showError('Poster downloaded successfully!', false);
+        }
+      }, 'image/png', 1.0);
+      
+    } catch (error) {
+      console.error('Error downloading poster:', error);
+      this.showError('Failed to download poster. Please try again.');
+    }
   }
 
   private showPreview(): void {
